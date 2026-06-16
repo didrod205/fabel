@@ -4,6 +4,18 @@ All notable changes to oh-my-fable are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-06-16
+
+### Added
+
+- A zero-dependency **CLI** (`oh-my-fable` / `omf`) so you can drive an agent from
+  the terminal without writing code: `run "<goal>"`, `resume <runId>`, `list`, and
+  a no-API-key `demo` — with a live event stream of the plan and per-step
+  reflections.
+- An opt-in, sandboxed **`fs` toolset** (`--tools fs` / `fsTools()`):
+  `read_file` / `write_file` / `list_dir`, confined to the working directory, so a
+  terminal run can produce real artifacts. Also exported for library use.
+
 ## [0.1.0] — 2026-06-15
 
 ### Added
@@ -28,8 +40,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Provider` abstraction with `AnthropicProvider` (via `fetch`, no SDK) and a
   `ScriptedProvider` that makes agents **deterministically testable**.
 - Observable via an `onEvent` stream.
-- A zero-dependency CLI (`oh-my-fable` / `omf`): `run` / `resume` / `list` / `demo`, live event stream, and an opt-in sandboxed `fs` toolset (`read_file`/`write_file`/`list_dir`).
 - Zero runtime dependencies. 20 tests covering crash-resume, replan accumulation,
   self-correction, budgets, tools, and JSON defense.
 
+[0.1.1]: https://github.com/didrod205/oh-my-fable/releases/tag/v0.1.1
 [0.1.0]: https://github.com/didrod205/oh-my-fable/releases/tag/v0.1.0
