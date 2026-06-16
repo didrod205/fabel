@@ -8,6 +8,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`CliProvider`** (+ `claudeCode()` / `codexCli()`) — drives an agentic CLI
+  (Claude Code, Codex) in non-interactive mode by shelling out to it, so people who
+  use those tools via a **subscription login can run agents with no separate API
+  key** — it rides whatever auth the CLI already has. CLI: `--provider claude` /
+  `--provider codex`. (Text-only: pure-reasoning, no `--tools`.)
 - **`OpenAICompatProvider`** (+ an `ollama()` helper) — talks the OpenAI
   chat-completions format, so it works with **local models (Ollama, LM Studio) with
   no API key at all**, plus OpenAI, OpenRouter, Groq, Together, llama.cpp, and more.

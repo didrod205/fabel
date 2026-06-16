@@ -65,3 +65,5 @@ export { AnthropicProvider } from "./providers/anthropic.js";
 export type { AnthropicOptions } from "./providers/anthropic.js";
 export { OpenAICompatProvider, ollama } from "./providers/openai.js";
 export type { OpenAICompatOptions } from "./providers/openai.js";
+export { CliProvider, claudeCode, codexCli } from "./providers/cli.js";
+export type { CliProviderOptions } from "./providers/cli.js";

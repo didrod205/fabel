@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { OpenAICompatProvider, ollama } from "../src/index.js";
+import { OpenAICompatProvider, ollama, CliProvider } from "../src/index.js";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -49,6 +49,33 @@ describe("OpenAICompatProvider", () => {
   it("surfaces server errors", async () => {
     globalThis.fetch = (async () => ({ ok: false, status: 400, text: async () => "bad model" }) as Response) as typeof fetch;
     await expect(new OpenAICompatProvider({ baseUrl: "http://h/v1", model: "nope", maxRetries: 0 }).complete({ messages: [] })).rejects.toThrow(/400/);
+  });
+});
+
+describe("CliProvider — drives an agentic CLI via subprocess", () => {
+  it("captures stdout from a command (prompt passed as an arg)", async () => {
+    // `node -e "<script>" <prompt>` — the script ignores the prompt and prints a result.
+    const p = new CliProvider({ command: process.execPath, args: ["-e", "process.stdout.write('CLI RESULT')"], promptVia: "arg" });
+    const out = await p.complete({ messages: [{ role: "user", content: "anything" }] });
+    expect(out.content).toBe("CLI RESULT");
+    expect(out.stopReason).toBe("end");
+  });
+
+  it("can pass the prompt on stdin", async () => {
+    const script = "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write('GOT:'+s))";
+    const p = new CliProvider({ command: process.execPath, args: ["-e", script], promptVia: "stdin" });
+    const out = await p.complete({ messages: [{ role: "user", content: "hello" }] });
+    expect(out.content).toBe("GOT:hello");
+  });
+
+  it("surfaces a non-zero exit as an error", async () => {
+    const p = new CliProvider({ command: process.execPath, args: ["-e", "process.exit(3)"], promptVia: "arg" });
+    await expect(p.complete({ messages: [{ role: "user", content: "x" }] })).rejects.toThrow(/exited 3/);
+  });
+
+  it("reports a missing command clearly", async () => {
+    const p = new CliProvider({ command: "definitely-not-a-real-binary-xyz", promptVia: "arg" });
+    await expect(p.complete({ messages: [{ role: "user", content: "x" }] })).rejects.toThrow(/not installed|not on your PATH/);
   });
 });
 

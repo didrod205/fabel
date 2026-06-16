@@ -140,7 +140,10 @@ Don't want to write code? It ships a CLI (zero extra deps):
 ```bash
 npx oh-my-fable demo                       # watch crash → resume, no API key
 
-# no API key at all — run a LOCAL model (Ollama / LM Studio):
+# already use Claude Code or Codex? drive it — uses that login, no separate key:
+npx oh-my-fable run "outline a talk on durable agents" --provider claude
+
+# or a LOCAL model (Ollama / LM Studio), also no key:
 npx oh-my-fable run "outline a talk on durable agents" --provider ollama --model llama3.1
 
 # or any hosted model:
@@ -151,10 +154,18 @@ npx oh-my-fable list                       # your saved runs
 npx oh-my-fable resume run_abc123          # continue one from its checkpoint
 ```
 
-**You don't need an Anthropic key.** `--provider ollama` / `--provider openai` /
-`--base-url <url>` point it at a local model, OpenAI, or any OpenAI-compatible
-server (LM Studio, OpenRouter, Groq, Together, llama.cpp…). The default is
-Anthropic only if you don't pick anything.
+**You don't need an Anthropic API key.** Pick how it talks to a model:
+
+| `--provider` | uses | key? |
+| --- | --- | --- |
+| `claude` / `codex` | your Claude Code / Codex CLI login | **none** — rides the CLI's auth |
+| `ollama` | a local Ollama model | **none** |
+| `--base-url <url>` | LM Studio / OpenRouter / Groq / any OpenAI-compatible | per that server |
+| `openai` | OpenAI | `OPENAI_API_KEY` |
+| *(default)* | Anthropic | `ANTHROPIC_API_KEY` |
+
+(The CLI-driven providers are text-only — great for planning/reasoning runs; they
+don't expose `--tools`.)
 
 You watch the plan form and each step get reflected on, live. `--tools fs` gives
 the agent a sandboxed `read_file`/`write_file`/`list_dir` (confined to the working
