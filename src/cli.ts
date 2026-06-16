@@ -5,6 +5,7 @@ import { runWith, resume } from "./index.js";
 import { FileStore } from "./memory/store.js";
 import { fsTools } from "./tools/fs.js";
 import { AnthropicProvider } from "./providers/anthropic.js";
+import { OpenAICompatProvider, ollama } from "./providers/openai.js";
 import { ScriptedProvider, reply } from "./providers/provider.js";
 import type { RunEvent, Goal, RunConfig, Provider } from "./core/types.js";
 
@@ -76,10 +77,26 @@ function renderer(): (e: RunEvent) => void {
 }
 
 function makeProvider(flags: Args["flags"]): Provider {
+  const str = (k: string) => (typeof flags[k] === "string" ? (flags[k] as string) : undefined);
+  const model = str("model");
+  const provider = str("provider");
+  const baseUrl = str("base-url");
+  const apiKey = str("api-key");
   try {
-    return new AnthropicProvider({ model: typeof flags["model"] === "string" ? (flags["model"] as string) : undefined });
+    if (provider === "ollama") return ollama(model ?? "llama3.1", baseUrl ? { baseUrl } : {});
+    if (provider === "openai") {
+      return new OpenAICompatProvider({ baseUrl: baseUrl ?? "https://api.openai.com/v1", apiKey: apiKey ?? process.env["OPENAI_API_KEY"], model: model ?? "gpt-4o-mini", label: "openai" });
+    }
+    if (baseUrl) {
+      if (!model) fail("--base-url needs --model too.");
+      return new OpenAICompatProvider({ baseUrl, apiKey: apiKey ?? process.env["OPENAI_API_KEY"], model });
+    }
+    return new AnthropicProvider({ model });
   } catch (err) {
-    fail((err as Error).message + "\nSet ANTHROPIC_API_KEY, or run `oh-my-fable demo` (no key needed).");
+    fail(
+      (err as Error).message +
+        "\n\nNo API key? Run a LOCAL model, no key needed:\n  oh-my-fable run \"...\" --provider ollama --model llama3.1\nOr just watch the mechanics: oh-my-fable demo",
+    );
   }
 }
 
@@ -203,18 +220,22 @@ ${bold("Usage")}
   oh-my-fable list                list saved runs
   oh-my-fable demo                watch crash → resume, scripted (no API key)
 
+${bold("Model")} ${dim("(default: Anthropic, needs ANTHROPIC_API_KEY)")}
+  --provider ollama --model llama3.1        a LOCAL model — no API key, no cost
+  --provider openai --model gpt-4o-mini     OpenAI (OPENAI_API_KEY)
+  --base-url <url> --model <id> [--api-key] any OpenAI-compatible server (LM Studio, OpenRouter, Groq, …)
+
 ${bold("Options for run")}
   --success "a; b"   success criteria (semicolon-separated)
   --tools fs         allow sandboxed read_file/write_file/list_dir (default: none)
-  --model <id>       model for the Anthropic provider
   --max-steps <n>    step budget          --max-tokens <n>   token budget
   --runs-dir <dir>   where checkpoints live (default: runs/)
   --quiet            no live event stream
 
 ${bold("Examples")}
-  oh-my-fable run "summarize README.md into SUMMARY.md" --tools fs
-  oh-my-fable run "outline a talk on durable agents" --success "an outline with 5 sections"
-  oh-my-fable demo
+  oh-my-fable run "outline a talk on durable agents" --provider ollama --model llama3.1
+  oh-my-fable run "summarize README.md into SUMMARY.md" --tools fs    ${dim("# uses Anthropic")}
+  oh-my-fable demo                                                    ${dim("# no key at all")}
 
 ${dim("It's also a library: import { run, AnthropicProvider } from \"oh-my-fable\".")}
 `);

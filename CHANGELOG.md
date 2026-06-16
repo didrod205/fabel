@@ -15,6 +15,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - An opt-in, sandboxed **`fs` toolset** (`--tools fs` / `fsTools()`):
   `read_file` / `write_file` / `list_dir`, confined to the working directory, so a
   terminal run can produce real artifacts. Also exported for library use.
+- **`OpenAICompatProvider`** (+ `ollama()` helper) — talks the OpenAI
+  chat-completions format, so it works with **local models (Ollama, LM Studio) with
+  no API key**, OpenAI, OpenRouter, Groq, Together, llama.cpp, and more. The CLI
+  picks it via `--provider ollama|openai` or `--base-url <url>`.
 
 ## [0.1.0] — 2026-06-15
 

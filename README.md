@@ -128,8 +128,10 @@ console.log(result.ctx.plan.steps);
 npm i oh-my-fable        # zero runtime dependencies
 ```
 
-Node ≥ 18. The `AnthropicProvider` talks to the API over `fetch` — no SDK. Bring
-any model by implementing the `Provider` interface (three methods).
+Node ≥ 18. Ships with `AnthropicProvider` and `OpenAICompatProvider` (works with
+OpenAI, Ollama, LM Studio, OpenRouter, Groq… — `ollama("llama3.1")` for a local
+model with no key), both over `fetch`, no SDK. Or bring any model by implementing
+the `Provider` interface (three methods).
 
 ## Or use it from the terminal
 
@@ -138,13 +140,21 @@ Don't want to write code? It ships a CLI (zero extra deps):
 ```bash
 npx oh-my-fable demo                       # watch crash → resume, no API key
 
+# no API key at all — run a LOCAL model (Ollama / LM Studio):
+npx oh-my-fable run "outline a talk on durable agents" --provider ollama --model llama3.1
+
+# or any hosted model:
 export ANTHROPIC_API_KEY=sk-...
 npx oh-my-fable run "summarize README.md into SUMMARY.md" --tools fs
-npx oh-my-fable run "outline a talk on durable agents" --success "5 sections"
 
 npx oh-my-fable list                       # your saved runs
 npx oh-my-fable resume run_abc123          # continue one from its checkpoint
 ```
+
+**You don't need an Anthropic key.** `--provider ollama` / `--provider openai` /
+`--base-url <url>` point it at a local model, OpenAI, or any OpenAI-compatible
+server (LM Studio, OpenRouter, Groq, Together, llama.cpp…). The default is
+Anthropic only if you don't pick anything.
 
 You watch the plan form and each step get reflected on, live. `--tools fs` gives
 the agent a sandboxed `read_file`/`write_file`/`list_dir` (confined to the working
