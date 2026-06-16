@@ -1,4 +1,4 @@
-# Contributing to actually-finishes
+# Contributing to fable5-mind
 
 Thanks for your interest! The most valuable contributions: a **new Provider**, a
 sharper **reflector heuristic**, a **Store backend**, or a failing test that
@@ -7,8 +7,8 @@ exposes a loop that doesn't terminate.
 ## Getting started
 
 ```bash
-git clone https://github.com/didrod205/actually-finishes.git
-cd actually-finishes
+git clone https://github.com/didrod205/fable5-mind.git
+cd fable5-mind
 npm install
 npm test          # vitest — the whole loop is tested with a ScriptedProvider, no network
 npm run typecheck

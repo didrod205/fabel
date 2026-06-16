@@ -1,5 +1,5 @@
 {
-  "name": "actually-finishes",
+  "name": "fable5-mind",
   "version": "0.1.0",
   "description": "The autonomous-agent harness that actually finishes long tasks — because it plans first, self-corrects every step, and survives crashes. The whole run lives in one serializable RunContext, checkpointed after every step, so it resumes exactly where it died. Model-agnostic, zero dependencies, deterministically testable.",
   "type": "module",
@@ -43,18 +43,22 @@
     "long-running",
     "model-agnostic",
     "anthropic",
+    "fable5",
+    "fable-5",
+    "mindset",
+    "plan-and-execute",
     "typescript"
   ],
   "author": "didrod205 (https://github.com/didrod205)",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/didrod205/actually-finishes.git"
+    "url": "git+https://github.com/didrod205/fable5-mind.git"
   },
   "bugs": {
-    "url": "https://github.com/didrod205/actually-finishes/issues"
+    "url": "https://github.com/didrod205/fable5-mind/issues"
   },
-  "homepage": "https://github.com/didrod205/actually-finishes#readme",
+  "homepage": "https://github.com/didrod205/fable5-mind#readme",
   "devDependencies": {
     "@types/node": "^22.10.0",
     "tsup": "^8.3.5",

@@ -1,17 +1,17 @@
 <div align="center">
 
-# actually-finishes
+# fable5-mind
 
-### The autonomous-agent harness that, well, actually finishes long tasks.
+### Fable 5's way of working a long task — plan first, self-correct every step, never lose the thread — as a model-agnostic agent harness.
 
-[![npm version](https://img.shields.io/npm/v/actually-finishes.svg?color=success)](https://www.npmjs.com/package/actually-finishes)
-[![CI](https://github.com/didrod205/actually-finishes/actions/workflows/ci.yml/badge.svg)](https://github.com/didrod205/actually-finishes/actions/workflows/ci.yml)
-[![types](https://img.shields.io/npm/types/actually-finishes.svg)](https://www.npmjs.com/package/actually-finishes)
-[![zero deps](https://img.shields.io/badge/dependencies-0-brightgreen)](https://www.npmjs.com/package/actually-finishes?activeTab=dependencies)
-[![license](https://img.shields.io/npm/l/actually-finishes.svg)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/fable5-mind.svg?color=success)](https://www.npmjs.com/package/fable5-mind)
+[![CI](https://github.com/didrod205/fable5-mind/actions/workflows/ci.yml/badge.svg)](https://github.com/didrod205/fable5-mind/actions/workflows/ci.yml)
+[![types](https://img.shields.io/npm/types/fable5-mind.svg)](https://www.npmjs.com/package/fable5-mind)
+[![zero deps](https://img.shields.io/badge/dependencies-0-brightgreen)](https://www.npmjs.com/package/fable5-mind?activeTab=dependencies)
+[![license](https://img.shields.io/npm/l/fable5-mind.svg)](./LICENSE)
 
 ```bash
-npm i actually-finishes
+npm i fable5-mind
 ```
 
 </div>
@@ -20,13 +20,17 @@ The demos are magical. Then you point an agent at a *real* multi-hour task and i
 loops on the same step, loses the plan somewhere in a 40-message chat history, and
 — when your process restarts — forgets everything and starts over.
 
-**actually-finishes** is built around the two mechanisms that fix that, and one
-rule that makes them work:
+**fable5-mind** encodes the way a strong reasoning model works a long task — the
+*mindset*, not the model — into a harness: plan first, self-correct every step,
+keep the thread, and finish. It's built around two mechanisms and one rule:
 
 > The whole run lives in a single **`RunContext`** — the only source of truth, and
 > always serializable. It's checkpointed after **every** step.
 
 From that one rule you get the thing nobody else gives you: **a crash is a pause.**
+
+<sub>The name is about the *thinking*, not a model lock-in — the mindset is Fable 5's, the
+engine is whatever `Provider` you hand it (Anthropic, OpenAI-compatible, local, …).</sub>
 
 ```
 ── run run_mqf… ──
@@ -85,7 +89,7 @@ Because every model call is stateless, you can script the model and assert the
 loop's behavior — no network, no flakiness:
 
 ```ts
-import { run, ScriptedProvider, reply, MemoryStore } from "actually-finishes";
+import { run, ScriptedProvider, reply, MemoryStore } from "fable5-mind";
 
 const provider = new ScriptedProvider([
   reply.plan([{ id: "s1", intent: "do the thing" }]),
@@ -103,7 +107,7 @@ budget halts, the tool loop — all without a single API call.
 ## Quick start
 
 ```ts
-import { run, AnthropicProvider } from "actually-finishes";
+import { run, AnthropicProvider } from "fable5-mind";
 
 const result = await run(
   {
@@ -119,7 +123,7 @@ console.log(result.ctx.plan.steps);
 ```
 
 ```bash
-npm i actually-finishes        # zero runtime dependencies
+npm i fable5-mind        # zero runtime dependencies
 ```
 
 Node ≥ 18. The `AnthropicProvider` talks to the API over `fetch` — no SDK. Bring
@@ -128,7 +132,7 @@ any model by implementing the `Provider` interface (three methods).
 ## Tools
 
 ```ts
-import { run, defineTool, AnthropicProvider } from "actually-finishes";
+import { run, defineTool, AnthropicProvider } from "fable5-mind";
 
 const search = defineTool(
   "web_search",
@@ -206,4 +210,4 @@ starting over:
 
 ## License
 
-[MIT](./LICENSE) © actually-finishes contributors
+[MIT](./LICENSE) © fable5-mind contributors
