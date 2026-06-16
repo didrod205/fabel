@@ -53,6 +53,7 @@ export { checkBudget } from "./run/budget.js";
 export { FileStore, MemoryStore } from "./memory/store.js";
 export { ContextManager } from "./memory/context.js";
 export { ToolRegistry, defineTool } from "./executor/tools.js";
+export { fsTools } from "./tools/fs.js";
 export { Planner } from "./planner/planner.js";
 export { Executor } from "./executor/executor.js";
 export { Reflector } from "./reflector/reflector.js";

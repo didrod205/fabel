@@ -131,6 +131,26 @@ npm i oh-my-fable        # zero runtime dependencies
 Node ≥ 18. The `AnthropicProvider` talks to the API over `fetch` — no SDK. Bring
 any model by implementing the `Provider` interface (three methods).
 
+## Or use it from the terminal
+
+Don't want to write code? It ships a CLI (zero extra deps):
+
+```bash
+npx oh-my-fable demo                       # watch crash → resume, no API key
+
+export ANTHROPIC_API_KEY=sk-...
+npx oh-my-fable run "summarize README.md into SUMMARY.md" --tools fs
+npx oh-my-fable run "outline a talk on durable agents" --success "5 sections"
+
+npx oh-my-fable list                       # your saved runs
+npx oh-my-fable resume run_abc123          # continue one from its checkpoint
+```
+
+You watch the plan form and each step get reflected on, live. `--tools fs` gives
+the agent a sandboxed `read_file`/`write_file`/`list_dir` (confined to the working
+directory) so a terminal run can actually produce files; without it, runs are
+pure-reasoning. Every run is checkpointed, so `resume <runId>` always works.
+
 ## Tools
 
 ```ts

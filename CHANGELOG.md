@@ -28,6 +28,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Provider` abstraction with `AnthropicProvider` (via `fetch`, no SDK) and a
   `ScriptedProvider` that makes agents **deterministically testable**.
 - Observable via an `onEvent` stream.
+- A zero-dependency CLI (`oh-my-fable` / `omf`): `run` / `resume` / `list` / `demo`, live event stream, and an opt-in sandboxed `fs` toolset (`read_file`/`write_file`/`list_dir`).
 - Zero runtime dependencies. 20 tests covering crash-resume, replan accumulation,
   self-correction, budgets, tools, and JSON defense.
 

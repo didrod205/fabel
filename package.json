@@ -13,6 +13,10 @@
       "require": "./dist/index.cjs"
     }
   },
+  "bin": {
+    "oh-my-fable": "./dist/cli.js",
+    "omf": "./dist/cli.js"
+  },
   "files": [
     "dist"
   ],
