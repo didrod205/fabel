@@ -4,6 +4,16 @@ All notable changes to oh-my-fable are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] — 2026-06-16
+
+### Added
+
+- **`OpenAICompatProvider`** (+ an `ollama()` helper) — talks the OpenAI
+  chat-completions format, so it works with **local models (Ollama, LM Studio) with
+  no API key at all**, plus OpenAI, OpenRouter, Groq, Together, llama.cpp, and more.
+  The CLI selects it via `--provider ollama|openai` or `--base-url <url>`, so you no
+  longer need an Anthropic key to use it from the terminal.
+
 ## [0.1.1] — 2026-06-16
 
 ### Added
@@ -15,10 +25,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - An opt-in, sandboxed **`fs` toolset** (`--tools fs` / `fsTools()`):
   `read_file` / `write_file` / `list_dir`, confined to the working directory, so a
   terminal run can produce real artifacts. Also exported for library use.
-- **`OpenAICompatProvider`** (+ `ollama()` helper) — talks the OpenAI
-  chat-completions format, so it works with **local models (Ollama, LM Studio) with
-  no API key**, OpenAI, OpenRouter, Groq, Together, llama.cpp, and more. The CLI
-  picks it via `--provider ollama|openai` or `--base-url <url>`.
 
 ## [0.1.0] — 2026-06-15
 
@@ -47,5 +53,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Zero runtime dependencies. 20 tests covering crash-resume, replan accumulation,
   self-correction, budgets, tools, and JSON defense.
 
+[0.1.2]: https://github.com/didrod205/oh-my-fable/releases/tag/v0.1.2
 [0.1.1]: https://github.com/didrod205/oh-my-fable/releases/tag/v0.1.1
 [0.1.0]: https://github.com/didrod205/oh-my-fable/releases/tag/v0.1.0
