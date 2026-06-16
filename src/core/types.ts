@@ -1,0 +1,211 @@
+// The complete type surface. Everything here is plain data and serializable —
+// the harness's one non-negotiable rule is that RunContext is the only source of
+// truth, and it must always round-trip through JSON.
+
+// ── Goal & Plan ──────────────────────────────────────────────────────────────
+
+export interface Goal {
+  description: string;
+  /** "don't do X" style guardrails. */
+  constraints?: string[];
+  /** Completion criteria the reflector checks against. */
+  successCriteria?: string[];
+}
+
+export type StepStatus = "pending" | "running" | "done" | "failed" | "skipped";
+
+export interface Step {
+  id: string;
+  /** What this step is trying to achieve (natural language). */
+  intent: string;
+  dependsOn?: string[];
+  status: StepStatus;
+  attempts: number;
+  /** Short summary of what the step produced, once done. */
+  result?: string;
+}
+
+export type PlanStatus = "active" | "done" | "failed";
+
+export interface Plan {
+  goal: string;
+  steps: Step[];
+  status: PlanStatus;
+  /** Bumped on every replan. */
+  revision: number;
+}
+
+// ── Execution & Reflection ───────────────────────────────────────────────────
+
+export interface Observation {
+  stepId: string;
+  ok: boolean;
+  output: string;
+  toolCalls?: ToolCall[];
+  error?: string;
+  tokensUsed: number;
+}
+
+export type Progress = "on_track" | "needs_replan" | "blocked" | "goal_met";
+
+export interface Reflection {
+  progress: Progress;
+  notes: string;
+  confidence?: number;
+}
+
+// ── Model calls ──────────────────────────────────────────────────────────────
+
+export type Role = "system" | "user" | "assistant";
+
+export interface Message {
+  role: Role;
+  content: string;
+}
+
+export interface ToolSchema {
+  name: string;
+  description: string;
+  /** JSON-schema object describing the parameters. */
+  parameters: Record<string, unknown>;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  input: unknown;
+}
+
+export interface ToolResult {
+  ok: boolean;
+  output: string;
+  error?: string;
+}
+
+export interface CompletionRequest {
+  messages: Message[];
+  tools?: ToolSchema[];
+  maxTokens?: number;
+  temperature?: number;
+  responseFormat?: "text" | "json";
+}
+
+export type StopReason = "end" | "tool_use" | "max_tokens" | "error";
+
+export interface CompletionResult {
+  content: string;
+  toolCalls?: ToolCall[];
+  tokensIn: number;
+  tokensOut: number;
+  stopReason: StopReason;
+}
+
+// ── Budget, digest & result ──────────────────────────────────────────────────
+
+export interface BudgetState {
+  steps: number;
+  tokens: number;
+  startedAtMs: number;
+  /** Separate counter so a replan storm can't run forever. */
+  replans: number;
+}
+
+export interface Digest {
+  summary: string;
+  /** ISO timestamp this digest covers up to. */
+  coversUntil: string;
+}
+
+// ── RunContext — the heart ───────────────────────────────────────────────────
+
+export interface RunContext {
+  runId: string;
+  goal: Goal;
+  plan: Plan;
+  /** Conversation handed to the model (the thing that gets compacted). */
+  history: Message[];
+  /** Compacted summaries of folded-away history. */
+  digests: Digest[];
+  budget: BudgetState;
+  config: SerializableConfig;
+  createdAt: string;
+  updatedAt: string;
+  /** Extension slot — modules attach state without touching the core. */
+  meta: Record<string, unknown>;
+}
+
+/** The subset of config that is data (persisted in RunContext). */
+export interface SerializableConfig {
+  maxSteps: number;
+  maxTokens: number;
+  maxWallClockMs: number;
+  maxStepAttempts: number;
+  maxReplans: number;
+  contextTokenLimit: number;
+  keepRecent: number;
+  temperature: number;
+  maxStepTokens: number;
+}
+
+export type RunStatus = "done" | "halted" | "failed";
+
+export interface RunResult {
+  status: RunStatus;
+  reason?: string;
+  ctx: RunContext;
+}
+
+export interface RunSummary {
+  runId: string;
+  goal: string;
+  planStatus: PlanStatus;
+  steps: number;
+  updatedAt: string;
+}
+
+// ── Provider, Store, Tool ────────────────────────────────────────────────────
+
+export interface Provider {
+  name: string;
+  complete(req: CompletionRequest): Promise<CompletionResult>;
+  /** Cheap token estimate (chars/4 is fine) — only used to decide compaction. */
+  estimateTokens(messages: Message[]): number;
+}
+
+export interface Store {
+  save(ctx: RunContext): Promise<void>;
+  load(runId: string): Promise<RunContext | null>;
+  list(): Promise<RunSummary[]>;
+}
+
+export interface Tool {
+  name: string;
+  description: string;
+  schema: ToolSchema;
+  handler(input: unknown): Promise<ToolResult> | ToolResult;
+}
+
+// ── Observability ────────────────────────────────────────────────────────────
+
+export type RunEvent =
+  | { type: "plan_created"; plan: Plan }
+  | { type: "step_start"; step: Step }
+  | { type: "step_done"; step: Step; observation: Observation }
+  | { type: "reflection"; reflection: Reflection; step: Step }
+  | { type: "replan"; revision: number; reason: string }
+  | { type: "compaction"; foldedMessages: number; digestChars: number }
+  | { type: "checkpoint"; runId: string }
+  | { type: "halted"; reason: string }
+  | { type: "done"; reason: string }
+  | { type: "escalation"; step: Step; notes: string };
+
+/** Full run config: data fields + injected dependencies. */
+export interface RunConfig extends Partial<SerializableConfig> {
+  provider: Provider;
+  store?: Store;
+  tools?: Tool[];
+  /** Where the default FileStore writes. */
+  runsDir?: string;
+  /** Observe everything the loop does. */
+  onEvent?: (event: RunEvent) => void;
+}

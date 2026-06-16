@@ -1,0 +1,108 @@
+import type { Step, RunContext, Observation, Provider, Message, ToolCall } from "../core/types.js";
+import { ToolRegistry } from "./tools.js";
+
+const EXEC_SYSTEM = `You are the execution module of an autonomous agent. You are given the overall goal for context and exactly ONE step to perform now.
+
+- Do only this step. Don't get ahead of the plan.
+- If a tool would help and tools are available, call it.
+- Respond with the concrete result of the step — what you produced, found, or decided. Be specific and concise; this becomes the step's recorded result.`;
+
+const MAX_TOOL_HOPS = 8;
+
+function background(ctx: RunContext): string {
+  const g = ctx.goal;
+  const done = ctx.plan.steps.filter((s) => s.status === "done");
+  const pending = ctx.plan.steps.filter((s) => s.status === "pending");
+  const lines = [`Goal: ${g.description}`];
+  if (g.constraints?.length) lines.push(`Constraints: ${g.constraints.join("; ")}`);
+  if (g.successCriteria?.length) lines.push(`Done when: ${g.successCriteria.join("; ")}`);
+  if (ctx.digests.length) {
+    lines.push("", "Summary of earlier work:");
+    for (const d of ctx.digests) lines.push(`  ${d.summary}`);
+  }
+  if (done.length) {
+    lines.push("", "Completed steps:");
+    for (const s of done) lines.push(`  ✓ ${s.intent}${s.result ? ` → ${s.result}` : ""}`);
+  }
+  if (pending.length) {
+    lines.push("", "Still to do:");
+    for (const s of pending) lines.push(`  • ${s.intent}`);
+  }
+  return lines.join("\n");
+}
+
+export class Executor {
+  private registry: ToolRegistry;
+  constructor(
+    private readonly provider: Provider,
+    registry: ToolRegistry,
+    private readonly opts: { temperature: number; maxStepTokens: number },
+  ) {
+    this.registry = registry;
+  }
+
+  async execute(step: Step, ctx: RunContext): Promise<Observation> {
+    const tools = this.registry.size > 0 ? this.registry.schemas() : undefined;
+    const local: Message[] = [
+      { role: "system", content: EXEC_SYSTEM },
+      { role: "user", content: background(ctx) },
+      ...ctx.history,
+      { role: "user", content: `Now do this step:\n[${step.id}] ${step.intent}` },
+    ];
+
+    let tokensUsed = 0;
+    const allToolCalls: ToolCall[] = [];
+    let toolError: string | undefined;
+
+    try {
+      let result = await this.provider.complete({
+        messages: local,
+        tools,
+        temperature: this.opts.temperature,
+        maxTokens: this.opts.maxStepTokens,
+      });
+      tokensUsed += result.tokensIn + result.tokensOut;
+
+      let hops = 0;
+      while (result.stopReason === "tool_use" && result.toolCalls?.length && hops < MAX_TOOL_HOPS) {
+        hops++;
+        const resultsText: string[] = [];
+        for (const call of result.toolCalls) {
+          allToolCalls.push(call);
+          const out = await this.registry.run(call.name, call.input);
+          if (!out.ok) toolError = out.error;
+          resultsText.push(`- ${call.name}: ${out.ok ? out.output : `ERROR: ${out.error}`}`);
+        }
+        local.push({ role: "assistant", content: result.content || `(requested: ${result.toolCalls.map((c) => c.name).join(", ")})` });
+        local.push({ role: "user", content: `Tool results:\n${resultsText.join("\n")}\n\nContinue the step with these.` });
+        result = await this.provider.complete({ messages: local, tools, temperature: this.opts.temperature, maxTokens: this.opts.maxStepTokens });
+        tokensUsed += result.tokensIn + result.tokensOut;
+      }
+
+      const ok = result.stopReason !== "error";
+      const output = result.content.trim() || (ok ? "(step produced no text output)" : "");
+
+      // Record the step exchange in history for continuity (kept lean; tools live in the observation).
+      ctx.history.push({ role: "user", content: `Step [${step.id}]: ${step.intent}` });
+      ctx.history.push({ role: "assistant", content: output });
+
+      return {
+        stepId: step.id,
+        ok,
+        output,
+        toolCalls: allToolCalls.length ? allToolCalls : undefined,
+        error: ok ? toolError : `model error (stopReason=${result.stopReason})`,
+        tokensUsed,
+      };
+    } catch (err) {
+      // A provider failure is itself an observation — let the reflector decide.
+      return {
+        stepId: step.id,
+        ok: false,
+        output: "",
+        error: (err as Error).message ?? "execution failed",
+        tokensUsed,
+      };
+    }
+  }
+}

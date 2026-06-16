@@ -1,0 +1,64 @@
+{
+  "name": "actually-finishes",
+  "version": "0.1.0",
+  "description": "The autonomous-agent harness that actually finishes long tasks — because it plans first, self-corrects every step, and survives crashes. The whole run lives in one serializable RunContext, checkpointed after every step, so it resumes exactly where it died. Model-agnostic, zero dependencies, deterministically testable.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "example": "npm run build && node examples/scripted-run.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "agent",
+    "ai-agent",
+    "agent-framework",
+    "autonomous-agent",
+    "llm",
+    "planner",
+    "reflection",
+    "self-correcting",
+    "resumable",
+    "checkpoint",
+    "crash-recovery",
+    "long-running",
+    "model-agnostic",
+    "anthropic",
+    "typescript"
+  ],
+  "author": "didrod205 (https://github.com/didrod205)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/didrod205/actually-finishes.git"
+  },
+  "bugs": {
+    "url": "https://github.com/didrod205/actually-finishes/issues"
+  },
+  "homepage": "https://github.com/didrod205/actually-finishes#readme",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
