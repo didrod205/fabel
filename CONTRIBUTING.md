@@ -1,4 +1,4 @@
-# Contributing to fabel
+# Contributing to oh-my-fable
 
 Thanks for your interest! The most valuable contributions: a **new Provider**, a
 sharper **reflector heuristic**, a **Store backend**, or a failing test that
@@ -7,8 +7,8 @@ exposes a loop that doesn't terminate.
 ## Getting started
 
 ```bash
-git clone https://github.com/didrod205/fabel.git
-cd fabel
+git clone https://github.com/didrod205/oh-my-fable.git
+cd oh-my-fable
 npm install
 npm test          # vitest — the whole loop is tested with a ScriptedProvider, no network
 npm run typecheck

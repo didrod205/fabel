@@ -1,5 +1,5 @@
 {
-  "name": "fabel",
+  "name": "oh-my-fable",
   "version": "0.1.0",
   "description": "The autonomous-agent harness that actually finishes long tasks — because it plans first, self-corrects every step, and survives crashes. The whole run lives in one serializable RunContext, checkpointed after every step, so it resumes exactly where it died. Model-agnostic, zero dependencies, deterministically testable.",
   "type": "module",
@@ -43,7 +43,7 @@
     "long-running",
     "model-agnostic",
     "anthropic",
-    "fabel",
+    "oh-my-fable",
     "fable5",
     "fable-5",
     "mindset",
@@ -54,12 +54,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/didrod205/fabel.git"
+    "url": "git+https://github.com/didrod205/oh-my-fable.git"
   },
   "bugs": {
-    "url": "https://github.com/didrod205/fabel/issues"
+    "url": "https://github.com/didrod205/oh-my-fable/issues"
   },
-  "homepage": "https://github.com/didrod205/fabel#readme",
+  "homepage": "https://github.com/didrod205/oh-my-fable#readme",
   "devDependencies": {
     "@types/node": "^22.10.0",
     "tsup": "^8.3.5",

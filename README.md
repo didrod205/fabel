@@ -1,19 +1,19 @@
 <div align="center">
 
-# fabel
+# oh-my-fable
 
 ### Fable 5's way of working a long task — plan first, self-correct every step, never lose the thread — as a model-agnostic agent harness.
 
-<sub><code>fabel</code> — <i>fable</i>, as in the mindset of <b>Fable 5</b>. The thinking is the model's; the engine is any provider.</sub>
+<sub>The <i>fable</i> is <b>Fable 5</b>'s way of thinking; the <code>oh-my-</code> is because, like <code>oh-my-zsh</code>, you just want the good defaults. The mindset is the model's — the engine is any provider.</sub>
 
-[![npm version](https://img.shields.io/npm/v/fabel.svg?color=success)](https://www.npmjs.com/package/fabel)
-[![CI](https://github.com/didrod205/fabel/actions/workflows/ci.yml/badge.svg)](https://github.com/didrod205/fabel/actions/workflows/ci.yml)
-[![types](https://img.shields.io/npm/types/fabel.svg)](https://www.npmjs.com/package/fabel)
-[![zero deps](https://img.shields.io/badge/dependencies-0-brightgreen)](https://www.npmjs.com/package/fabel?activeTab=dependencies)
-[![license](https://img.shields.io/npm/l/fabel.svg)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/oh-my-fable.svg?color=success)](https://www.npmjs.com/package/oh-my-fable)
+[![CI](https://github.com/didrod205/oh-my-fable/actions/workflows/ci.yml/badge.svg)](https://github.com/didrod205/oh-my-fable/actions/workflows/ci.yml)
+[![types](https://img.shields.io/npm/types/oh-my-fable.svg)](https://www.npmjs.com/package/oh-my-fable)
+[![zero deps](https://img.shields.io/badge/dependencies-0-brightgreen)](https://www.npmjs.com/package/oh-my-fable?activeTab=dependencies)
+[![license](https://img.shields.io/npm/l/oh-my-fable.svg)](./LICENSE)
 
 ```bash
-npm i fabel
+npm i oh-my-fable
 ```
 
 </div>
@@ -22,7 +22,7 @@ The demos are magical. Then you point an agent at a *real* multi-hour task and i
 loops on the same step, loses the plan somewhere in a 40-message chat history, and
 — when your process restarts — forgets everything and starts over.
 
-**fabel** encodes the way a strong reasoning model works a long task — the
+**oh-my-fable** encodes the way a strong reasoning model works a long task — the
 *mindset*, not the model — into a harness: plan first, self-correct every step,
 keep the thread, and finish. It's built around two mechanisms and one rule:
 
@@ -91,7 +91,7 @@ Because every model call is stateless, you can script the model and assert the
 loop's behavior — no network, no flakiness:
 
 ```ts
-import { run, ScriptedProvider, reply, MemoryStore } from "fabel";
+import { run, ScriptedProvider, reply, MemoryStore } from "oh-my-fable";
 
 const provider = new ScriptedProvider([
   reply.plan([{ id: "s1", intent: "do the thing" }]),
@@ -109,7 +109,7 @@ budget halts, the tool loop — all without a single API call.
 ## Quick start
 
 ```ts
-import { run, AnthropicProvider } from "fabel";
+import { run, AnthropicProvider } from "oh-my-fable";
 
 const result = await run(
   {
@@ -125,7 +125,7 @@ console.log(result.ctx.plan.steps);
 ```
 
 ```bash
-npm i fabel        # zero runtime dependencies
+npm i oh-my-fable        # zero runtime dependencies
 ```
 
 Node ≥ 18. The `AnthropicProvider` talks to the API over `fetch` — no SDK. Bring
@@ -134,7 +134,7 @@ any model by implementing the `Provider` interface (three methods).
 ## Tools
 
 ```ts
-import { run, defineTool, AnthropicProvider } from "fabel";
+import { run, defineTool, AnthropicProvider } from "oh-my-fable";
 
 const search = defineTool(
   "web_search",
@@ -212,4 +212,4 @@ starting over:
 
 ## License
 
-[MIT](./LICENSE) © fabel contributors
+[MIT](./LICENSE) © oh-my-fable contributors
