@@ -133,6 +133,14 @@ OpenAI, Ollama, LM Studio, OpenRouter, Groq… — `ollama("llama3.1")` for a lo
 model with no key), both over `fetch`, no SDK. Or bring any model by implementing
 the `Provider` interface (three methods).
 
+`AnthropicProvider` works with the current flagship models (`claude-opus-4-8`,
+`claude-fable-5`) out of the box — it drops the `temperature` parameter they
+reject — and **prompt-caches the system+tools prefix by default**, so a long
+durable run pays ~10× less on the context it replays every step. Opt into
+`{ thinking: "adaptive", effort: "high" }` for harder planning. The `claude`
+provider can return real `--output-format json` cost/usage and run Claude's own
+tools (`{ tools: true, permissionMode: "acceptEdits" }`).
+
 ## Or use it from the terminal
 
 Don't want to write code? It ships a CLI (zero extra deps):
@@ -140,7 +148,11 @@ Don't want to write code? It ships a CLI (zero extra deps):
 ```bash
 npx oh-my-fable demo                       # watch crash → resume, no API key
 
-# already use Claude Code or Codex? drive it — uses that login, no separate key:
+# ⭐ already pay for Claude Code? drive it as a DURABLE, TOOL-USING agent — your
+#    login, no separate API key, $0 per token. Claude edits files & runs commands:
+npx oh-my-fable run "refactor utils.ts and run the tests" --provider claude --cli-tools
+
+# pure-reasoning over the same login (no tools):
 npx oh-my-fable run "outline a talk on durable agents" --provider claude
 
 # or a LOCAL model (Ollama / LM Studio), also no key:
@@ -151,26 +163,33 @@ export ANTHROPIC_API_KEY=sk-...
 npx oh-my-fable run "summarize README.md into SUMMARY.md" --tools fs
 
 npx oh-my-fable list                       # your saved runs
+npx oh-my-fable show  run_abc123           # the run's plan, steps & budget as a timeline
 npx oh-my-fable resume run_abc123          # continue one from its checkpoint
 ```
 
 **You don't need an Anthropic API key.** Pick how it talks to a model:
 
-| `--provider` | uses | key? |
-| --- | --- | --- |
-| `claude` / `codex` | your Claude Code / Codex CLI login | **none** — rides the CLI's auth |
-| `ollama` | a local Ollama model | **none** |
-| `--base-url <url>` | LM Studio / OpenRouter / Groq / any OpenAI-compatible | per that server |
-| `openai` | OpenAI | `OPENAI_API_KEY` |
-| *(default)* | Anthropic | `ANTHROPIC_API_KEY` |
+| `--provider` | uses | key? | tools? |
+| --- | --- | --- | --- |
+| `claude` | your Claude Code login | **none** | `--cli-tools` → Claude runs Read/Write/Edit/Bash itself |
+| `codex` | your Codex CLI login | **none** | `--cli-tools` → workspace-write |
+| `ollama` | a local Ollama model | **none** | `--tools fs` (harness-run) |
+| `--base-url <url>` | LM Studio / OpenRouter / Groq / any OpenAI-compatible | per that server | `--tools fs` |
+| `openai` | OpenAI | `OPENAI_API_KEY` | `--tools fs` |
+| *(default)* | Anthropic | `ANTHROPIC_API_KEY` | `--tools fs` |
 
-(The CLI-driven providers are text-only — great for planning/reasoning runs; they
-don't expose `--tools`.)
+**Two ways to give an agent hands:**
 
-You watch the plan form and each step get reflected on, live. `--tools fs` gives
-the agent a sandboxed `read_file`/`write_file`/`list_dir` (confined to the working
-directory) so a terminal run can actually produce files; without it, runs are
-pure-reasoning. Every run is checkpointed, so `resume <runId>` always works.
+- `--cli-tools` (claude/codex) — the CLI runs its **own** tools (file edits, shell)
+  on your subscription. oh-my-fable stays the durable planner/reflector around it:
+  it plans, checkpoints every step, and reflects — Claude does the work. Tune with
+  `--permission-mode acceptEdits|dontAsk|plan` and `--allow "Read,Edit,Bash(npm test)"`.
+- `--tools fs` (API providers) — the harness gives the agent a sandboxed
+  `read_file`/`write_file`/`list_dir`, confined to the working directory.
+
+You watch the plan form and each step get reflected on, live. Every run is
+checkpointed, so `resume <runId>` always works — and `show <runId>` prints the
+whole run (plan, steps, budget) from its serialized `RunContext`.
 
 ## Tools
 
@@ -238,7 +257,7 @@ architecture writeup is in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## Roadmap
 
-- A web dashboard that tails a run's events and lets you resume from any checkpoint.
+- A web dashboard that tails a run's events and lets you resume from any checkpoint (`show <runId>` is the CLI version of this today).
 - More providers in-repo (OpenAI-compatible, local) — though it's a 3-method interface.
 - Parallel step execution for independent branches of the plan DAG.
 - Human-in-the-loop: pause for approval as a first-class step status.

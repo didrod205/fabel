@@ -10,7 +10,7 @@ import { claudeCode, codexCli } from "./providers/cli.js";
 import { ScriptedProvider, reply } from "./providers/provider.js";
 import type { RunEvent, Goal, RunConfig, Provider } from "./core/types.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 // ── tiny zero-dep arg + color helpers ────────────────────────────────────────
 const useColor = process.stdout.isTTY && !process.env["NO_COLOR"];
@@ -83,9 +83,13 @@ function makeProvider(flags: Args["flags"]): Provider {
   const provider = str("provider");
   const baseUrl = str("base-url");
   const apiKey = str("api-key");
+  const permissionMode = str("permission-mode");
+  const allowList = typeof flags["allow"] === "string" ? (flags["allow"] as string).split(",").map((s) => s.trim()).filter(Boolean) : undefined;
+  const cliTools = flags["cli-tools"] === true;
+  const toolsOpt = allowList ?? (cliTools ? true : undefined);
   try {
-    if (provider === "claude" || provider === "claude-code") return claudeCode();
-    if (provider === "codex") return codexCli();
+    if (provider === "claude" || provider === "claude-code") return claudeCode({ model, tools: toolsOpt, permissionMode });
+    if (provider === "codex") return codexCli({ model, tools: cliTools || !!allowList });
     if (provider === "ollama") return ollama(model ?? "llama3.1", baseUrl ? { baseUrl } : {});
     if (provider === "openai") {
       return new OpenAICompatProvider({ baseUrl: baseUrl ?? "https://api.openai.com/v1", apiKey: apiKey ?? process.env["OPENAI_API_KEY"], model: model ?? "gpt-4o-mini", label: "openai" });
@@ -165,6 +169,34 @@ async function cmdList(args: Args): Promise<void> {
   process.stdout.write("\n");
 }
 
+async function cmdShow(args: Args): Promise<void> {
+  const runId = args._[0];
+  if (!runId) fail("Give a run id: oh-my-fable show <runId>   (see `oh-my-fable list`)");
+  const store = new FileStore(typeof args.flags["runs-dir"] === "string" ? (args.flags["runs-dir"] as string) : "runs");
+  const ctx = await store.load(runId);
+  if (!ctx) fail(`no run ${runId} — try \`oh-my-fable list\``);
+
+  const icon: Record<string, string> = { done: green("✔"), failed: red("✗"), running: yellow("▶"), skipped: dim("–"), pending: dim("·") };
+  const p = ctx.plan;
+  const planColor = p.status === "done" ? green : p.status === "failed" ? red : yellow;
+  process.stdout.write(`\n  ${dim("── run")} ${mag(ctx.runId)} ${dim("──")}\n`);
+  process.stdout.write(`  ${bold("goal")}  ${ctx.goal.description}\n`);
+  if (ctx.goal.successCriteria?.length) process.stdout.write(`  ${dim("done when")}  ${dim(ctx.goal.successCriteria.join("; "))}\n`);
+  process.stdout.write(`  ${bold("plan")}  ${planColor(p.status)} ${dim(`· rev ${p.revision} · ${p.steps.length} steps`)}\n\n`);
+
+  for (const s of p.steps) {
+    process.stdout.write(`  ${icon[s.status] ?? "·"} ${s.intent}${s.attempts > 1 ? dim(`  ×${s.attempts}`) : ""}\n`);
+    if (s.result) process.stdout.write(`     ${dim("↳ " + s.result.replace(/\s+/g, " ").slice(0, 120))}\n`);
+  }
+
+  const b = ctx.budget;
+  const mins = Math.max(0, Math.round((Date.parse(ctx.updatedAt) - Date.parse(ctx.createdAt)) / 60000));
+  process.stdout.write(`\n  ${dim(`budget: ${b.steps} steps · ${b.tokens.toLocaleString()} tokens · ${b.replans} replans · ~${mins}m`)}\n`);
+  if (ctx.digests.length) process.stdout.write(`  ${dim(`compacted: ${ctx.digests.length} digest${ctx.digests.length === 1 ? "" : "s"}`)}\n`);
+  if (p.status !== "done") process.stdout.write(`  ${dim("resume:")} ${cyan(`oh-my-fable resume ${ctx.runId}`)}\n`);
+  process.stdout.write("\n");
+}
+
 async function cmdDemo(): Promise<void> {
   // The crash → resume story, scripted (no API key).
   const { MemoryStore } = await import("./memory/store.js");
@@ -221,28 +253,36 @@ function help(): void {
 ${bold("oh-my-fable")} ${dim("v" + VERSION)} — give an agent a goal; it plans, self-corrects, and survives crashes.
 
 ${bold("Usage")}
-  oh-my-fable run "<goal>"        run an agent on a goal (needs ANTHROPIC_API_KEY)
+  oh-my-fable run "<goal>"        run an agent on a goal
   oh-my-fable resume <runId>      continue a crashed/halted run from its checkpoint
+  oh-my-fable show <runId>        print a run's plan, steps, and budget as a timeline
   oh-my-fable list                list saved runs
   oh-my-fable demo                watch crash → resume, scripted (no API key)
 
-${bold("Model")} ${dim("(default: Anthropic, needs ANTHROPIC_API_KEY)")}
-  --provider claude                         drive your Claude Code CLI — uses its login, NO separate key
-  --provider codex                          drive your Codex CLI — same idea
+${bold("Model")} ${dim("— no API key needed; ride a CLI login you already have")}
+  --provider claude                         drive your Claude Code login — NO separate API key
+  --provider claude --cli-tools             …and let Claude edit files / run tools itself (durable agent on your sub)
+  --provider codex  --cli-tools             drive your Codex login, workspace-write
   --provider ollama --model llama3.1        a LOCAL model — no API key, no cost
   --provider openai --model gpt-4o-mini     OpenAI (OPENAI_API_KEY)
   --base-url <url> --model <id> [--api-key] any OpenAI-compatible server (LM Studio, OpenRouter, Groq, …)
+  ${dim("(default: Anthropic API, needs ANTHROPIC_API_KEY)")}
 
 ${bold("Options for run")}
-  --success "a; b"   success criteria (semicolon-separated)
-  --tools fs         allow sandboxed read_file/write_file/list_dir (default: none)
-  --max-steps <n>    step budget          --max-tokens <n>   token budget
-  --runs-dir <dir>   where checkpoints live (default: runs/)
-  --quiet            no live event stream
+  --model <id>          model/alias for the chosen provider (e.g. opus, sonnet, llama3.1)
+  --cli-tools           let a CLI provider run its own tools (claude/codex); pairs with --permission-mode
+  --permission-mode <m> claude: acceptEdits (default) | dontAsk | plan
+  --allow "Read,Edit"   claude: exact tool allowlist instead of the file-only default
+  --success "a; b"      success criteria (semicolon-separated)
+  --tools fs            give the harness sandboxed read_file/write_file/list_dir (API providers)
+  --max-steps <n>       step budget          --max-tokens <n>   token budget
+  --runs-dir <dir>      where checkpoints live (default: runs/)
+  --quiet               no live event stream
 
 ${bold("Examples")}
+  oh-my-fable run "refactor utils.ts and run the tests" --provider claude --cli-tools   ${dim("# no API key")}
   oh-my-fable run "outline a talk on durable agents" --provider ollama --model llama3.1
-  oh-my-fable run "summarize README.md into SUMMARY.md" --tools fs    ${dim("# uses Anthropic")}
+  oh-my-fable show run_abc123                                          ${dim("# inspect any saved run")}
   oh-my-fable demo                                                    ${dim("# no key at all")}
 
 ${dim("It's also a library: import { run, AnthropicProvider } from \"oh-my-fable\".")}
@@ -261,6 +301,8 @@ async function main(): Promise<void> {
       return cmdResume(args);
     case "list":
       return cmdList(args);
+    case "show":
+      return cmdShow(args);
     case "demo":
       return cmdDemo();
     default:

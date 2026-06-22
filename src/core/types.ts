@@ -98,6 +98,10 @@ export interface CompletionResult {
   tokensIn: number;
   tokensOut: number;
   stopReason: StopReason;
+  /** Provider session id, when the backend exposes one (e.g. `claude -p` --resume). */
+  sessionId?: string;
+  /** Real spend for this call in USD, when the backend reports it (e.g. claude --output-format json). */
+  costUsd?: number;
 }
 
 // ── Budget, digest & result ──────────────────────────────────────────────────

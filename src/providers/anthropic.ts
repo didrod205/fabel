@@ -1,6 +1,8 @@
 import type { Provider, CompletionRequest, CompletionResult, Message, ToolCall, StopReason } from "../core/types.js";
 import { estimateTokens, withRetry } from "./provider.js";
 
+export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+
 export interface AnthropicOptions {
   apiKey?: string;
   model?: string;
@@ -9,6 +11,17 @@ export interface AnthropicOptions {
   version?: string;
   maxRetries?: number;
   defaultMaxTokens?: number;
+  /**
+   * Cache the stable system + tools prefix with `cache_control: ephemeral`.
+   * A durable agent replays a large prefix every step, so cached tokens cost
+   * ~10× less. On by default; harmless when the prefix is below the cache
+   * minimum (it just won't cache). Set false to disable.
+   */
+  cache?: boolean;
+  /** Turn on adaptive thinking (recommended for planning/reflection on 4.7+/Fable). */
+  thinking?: "adaptive";
+  /** Reasoning/spend dial for thinking models: low | medium | high | xhigh | max. */
+  effort?: Effort;
 }
 
 interface AnthropicBlock {
@@ -17,6 +30,24 @@ interface AnthropicBlock {
   id?: string;
   name?: string;
   input?: unknown;
+}
+
+interface AnthropicUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
+}
+
+/**
+ * Models that removed the sampling parameters (`temperature`/`top_p`/`top_k`) —
+ * sending `temperature` to any of these returns HTTP 400. Opus 4.7/4.8, Fable 5,
+ * and Mythos 5. We strip it for them so the provider works against the flagship
+ * models, not just Sonnet.
+ */
+export function modelRejectsSampling(model: string): boolean {
+  const m = model.toLowerCase();
+  return m.includes("opus-4-7") || m.includes("opus-4-8") || m.includes("fable") || m.includes("mythos");
 }
 
 /** Coalesce consecutive same-role turns — the Messages API wants alternation. */
@@ -43,6 +74,9 @@ export class AnthropicProvider implements Provider {
   private readonly version: string;
   private readonly maxRetries: number;
   private readonly defaultMaxTokens: number;
+  private readonly cache: boolean;
+  private readonly thinking?: "adaptive";
+  private readonly effort?: Effort;
 
   constructor(opts: AnthropicOptions = {}) {
     this.apiKey = opts.apiKey ?? process.env["ANTHROPIC_API_KEY"] ?? "";
@@ -51,6 +85,9 @@ export class AnthropicProvider implements Provider {
     this.version = opts.version ?? "2023-06-01";
     this.maxRetries = opts.maxRetries ?? 4;
     this.defaultMaxTokens = opts.defaultMaxTokens ?? 4096;
+    this.cache = opts.cache ?? true;
+    this.thinking = opts.thinking;
+    this.effort = opts.effort;
     if (!this.apiKey) {
       throw new Error("AnthropicProvider needs an API key (pass { apiKey } or set ANTHROPIC_API_KEY).");
     }
@@ -72,12 +109,24 @@ export class AnthropicProvider implements Provider {
     const body: Record<string, unknown> = {
       model: this.model,
       max_tokens: req.maxTokens ?? this.defaultMaxTokens,
-      temperature: req.temperature ?? 1,
       messages: convo,
     };
+
+    // Sampling: omit `temperature` for models that reject it (would 400), and
+    // for thinking runs (thinking models don't take sampling params).
+    if (typeof req.temperature === "number" && !this.thinking && !modelRejectsSampling(this.model)) {
+      body["temperature"] = req.temperature;
+    }
+
+    if (this.thinking === "adaptive") body["thinking"] = { type: "adaptive" };
+    if (this.effort) body["output_config"] = { effort: this.effort };
+
     let sys = system;
     if (req.responseFormat === "json") sys = (sys ? sys + "\n\n" : "") + "Output ONLY valid JSON. No prose, no code fences.";
-    if (sys) body["system"] = sys;
+    if (sys) {
+      // A cache breakpoint on the system block caches tools + system together.
+      body["system"] = this.cache ? [{ type: "text", text: sys, cache_control: { type: "ephemeral" } }] : sys;
+    }
     if (req.tools?.length) {
       body["tools"] = req.tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }));
     }
@@ -99,7 +148,7 @@ export class AnthropicProvider implements Provider {
           err.status = res.status;
           throw err;
         }
-        return (await res.json()) as { content?: AnthropicBlock[]; stop_reason?: string; usage?: { input_tokens?: number; output_tokens?: number } };
+        return (await res.json()) as { content?: AnthropicBlock[]; stop_reason?: string; usage?: AnthropicUsage };
       },
       {
         retries: this.maxRetries,
@@ -117,12 +166,17 @@ export class AnthropicProvider implements Provider {
       else if (block.type === "tool_use" && block.name) toolCalls.push({ id: block.id ?? block.name, name: block.name, input: block.input });
     }
 
+    // True input size = uncached + cache-read + cache-write, so the budget
+    // reflects the real context the model saw, not just the uncached remainder.
+    const u = data.usage ?? {};
+    const tokensIn = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+
     const map: Record<string, StopReason> = { end_turn: "end", tool_use: "tool_use", max_tokens: "max_tokens", stop_sequence: "end" };
     return {
       content,
       toolCalls: toolCalls.length ? toolCalls : undefined,
-      tokensIn: data.usage?.input_tokens ?? 0,
-      tokensOut: data.usage?.output_tokens ?? 0,
+      tokensIn,
+      tokensOut: u.output_tokens ?? 0,
       stopReason: map[data.stop_reason ?? ""] ?? "end",
     };
   }
